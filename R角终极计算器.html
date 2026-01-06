@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>终极 R 角计算器 (混合算法)</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #475569;
+            --accent: #059669;
+            --bg: #f1f5f9;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background-color: var(--bg);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+            width: 100%; 
+            max-width: 500px; 
+        }
+        h2 { 
+            text-align: center; 
+            color: #1e293b; 
+            margin: 0 0 5px 0;
+            font-size: 1.5rem;
+        }
+        p.subtitle {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-bottom: 25px;
+        }
+        
+        /* 输入区域样式 */
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .full-width { grid-column: span 2; }
+        
+        label { 
+            display: block; 
+            margin-bottom: 6px; 
+            font-weight: 600; 
+            font-size: 0.85rem; 
+            color: #334155;
+        }
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            box-sizing: border-box; 
+            border: 2px solid #e2e8f0; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        button { 
+            width: 100%; 
+            padding: 14px; 
+            background-color: #1e293b; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: 600; 
+            margin-top: 10px;
+            transition: transform 0.1s;
+        }
+        button:hover { transform: scale(1.02); background-color: #0f172a; }
+
+        /* 结果卡片区域 */
+        #results-area { display: none; margin-top: 30px; }
+        
+        .result-card {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        /* 推荐卡片的高亮样式 */
+        .result-card.recommended {
+            background: #ecfdf5; /* 浅绿色背景 */
+            border: 2px solid var(--accent);
+            box-shadow: 0 4px 6px rgba(5, 150, 105, 0.1);
+        }
+        .badge {
+            position: absolute;
+            top: -12px;
+            right: 15px;
+            background: var(--accent);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        .recommended .card-title { color: #047857; }
+
+        .card-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .recommended .card-value { color: #065f46; }
+
+        .card-desc {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+        .recommended .card-desc { color: #059669; opacity: 0.8; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>⚖️ 终极版 R 角计算器</h2>
+        <p class="subtitle">等弧长 + 等切线 + 智能折中均值</p>
+        
+        <div class="input-grid">
+            <div>
+                <label>基准内角 (°)</label>
+                <input type="number" id="baseAngle" value="45" placeholder="45">
+            </div>
+            <div>
+                <label>基准 R 值 (mm)</label>
+                <input type="number" id="baseRadius" value="1.0" placeholder="1.0">
+            </div>
+            <div class="full-width">
+                <label>目标内角 (°)</label>
+                <input type="number" id="targetAngle" value="90" placeholder="90">
+            </div>
+        </div>
+
+        <button onclick="calculateUltimate()">一键计算三种方案</button>
+
+        <div id="results-area">
+            
+            <!-- 方案 1: 等弧长 -->
+            <div class="result-card">
+                <div class="card-title">方案 A: 等弧长 (Constant Arc)</div>
+                <div class="card-value" id="val-arc">0.000 <span style="font-size:1rem">mm</span></div>
+                <div class="card-desc">适合线框、描边、霓虹灯风格。保持线条长度一致。</div>
+            </div>
+
+            <!-- 方案 2: 等切线 -->
+            <div class="result-card">
+                <div class="card-title">方案 B: 等切线 (Constant Tangent)</div>
+                <div class="card-value" id="val-tan">0.000 <span style="font-size:1rem">mm</span></div>
+                <div class="card-desc">适合实心图形、外壳设计。保持圆角起止点位置一致。</div>
+            </div>
+
+            <!-- 方案 3: 终极均值 -->
+            <div class="result-card recommended">
+                <div class="badge">🌟 推荐值 (视觉折中)</div>
+                <div class="card-title">方案 C: 混合均值 (Ultimate Hybrid)</div>
+                <div class="card-value" id="val-avg">0.000 <span style="font-size:1rem">mm</span></div>
+                <div class="card-desc">结合了A和B的优点。既有线条的连贯性，又有几何的稳定性。</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function calculateUltimate() {
+            // 1. 获取输入
+            const baseAngle = parseFloat(document.getElementById('baseAngle').value);
+            const baseRadius = parseFloat(document.getElementById('baseRadius').value);
+            const targetAngle = parseFloat(document.getElementById('targetAngle').value);
+            const resultsArea = document.getElementById('results-area');
+
+            // 2. 校验
+            if ([baseAngle, baseRadius, targetAngle].some(isNaN)) {
+                alert("请输入完整数值"); return;
+            }
+            if (baseAngle <= 0 || baseAngle >= 180 || targetAngle <= 0 || targetAngle >= 180) {
+                alert("角度必须在 0 到 180 之间"); return;
+            }
+
+            // 3. 计算逻辑
+
+            // --- 算法 A: 等弧长 ---
+            // R_new = R_old * (BaseTurn / TargetTurn)
+            const baseTurn = 180 - baseAngle;
+            const targetTurn = 180 - targetAngle;
+            const rArc = baseRadius * (baseTurn / targetTurn);
+
+            // --- 算法 B: 等切线 ---
+            // R_new = R_old * ( tan(Target/2) / tan(Base/2) )
+            const toRad = deg => deg * Math.PI / 180;
+            const tanBase = Math.tan(toRad(baseAngle) / 2);
+            const tanTarget = Math.tan(toRad(targetAngle) / 2);
+            // 这是一个保护，防止 tan 算出 0 或 无穷
+            if (tanBase === 0) { alert("角度无效"); return; }
+            
+            // T = R / tan(theta/2)  =>  T_base = baseRadius / tanBase
+            // R_target = T_base * tanTarget
+            const rTan = (baseRadius / tanBase) * tanTarget;
+
+            // --- 算法 C: 均值 ---
+            const rAvg = (rArc + rTan) / 2;
+
+            // 4. 显示结果
+            resultsArea.style.display = 'block';
+            
+            document.getElementById('val-arc').innerHTML = rArc.toFixed(3) + ' <span style="font-size:1rem; font-weight:normal">mm</span>';
+            document.getElementById('val-tan').innerHTML = rTan.toFixed(3) + ' <span style="font-size:1rem; font-weight:normal">mm</span>';
+            document.getElementById('val-avg').innerHTML = rAvg.toFixed(3) + ' <span style="font-size:1rem; font-weight:normal">mm</span>';
+        }
+    </script>
+</body>
+</html>
